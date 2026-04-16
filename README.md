@@ -8,6 +8,13 @@ This plugin for [Obsidian] enables you complete words like the auto-completion o
 
 ![](https://tadashi-aikawa.github.io/docs-obsidian-various-complements-plugin/resources/various-complements.gif)
 
+## ✨ Funções Adicionadas (Versão PT-BR)
+
+Esta versão conta com melhorias exclusivas focadas nos usuários da língua portuguesa (e idiomas com acentos):
+
+- **Busca Independente de Acento (Diacritics Insensitive):** Agora você não precisa digitar "café" se quiser que o autocompletar sugira; digitar "cafe" funcionará perfeitamente. Há uma nova chave visual nas opções `Treat accent/diacritics as alphabetic characters`.
+- **Corretor de Erros de Digitação Rápido (BK-Tree Spell Correction):** Errou uma letra durante a correria? Se o plugin não achar nenhuma palavra normal, ele agora usa uma estrutura matemática poderosa (Burkhard-Keller Tree) para calcular rapidamente a correção ortográfica (`dsenv` > sugere `desenvolvimento ✨`), sinalizando o erro com uma estrela na interface, sem perder performance em dicionários gigantes.
+
 ## 📚 Documentation
 
 - [Official](https://tadashi-aikawa.github.io/docs-obsidian-various-complements-plugin/)
