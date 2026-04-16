@@ -8,6 +8,7 @@ import {
   pushWord,
   suggestWords,
   suggestWordsByPartialMatch,
+  suggestWordsBySpellCorrection,
   type WordsByFirstLetter,
 } from "./suggester";
 
@@ -2246,5 +2247,131 @@ describe("suggestWordsByPartialMatch", () => {
         fuzzy: false,
       },
     ]);
+  });
+});
+
+describe("suggestWordsBySpellCorrection", () => {
+  const createIndexedWords = (): IndexedWords => ({
+    currentFile: {
+      h: [
+        { value: "hello", type: "currentFile", createdPath: "" },
+        { value: "help", type: "currentFile", createdPath: "" },
+      ],
+      w: [
+        { value: "world", type: "currentFile", createdPath: "" },
+      ],
+    },
+    currentVault: {},
+    customDictionary: {
+      c: [
+        { value: "café", type: "customDictionary", createdPath: "" },
+        { value: "code", type: "customDictionary", createdPath: "" },
+      ],
+    },
+    internalLink: {},
+    frontMatter: {},
+  });
+
+  test("finds similar words within distance 1", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "helo",
+      10,
+      { maxDistance: 1 },
+    );
+    expect(results.length).toBeGreaterThan(0);
+    // Both "help" (substitution) and "hello" (insertion) are distance 1
+    // "help" sorts first because it's shorter
+    const values = results.map((r) => r.value);
+    expect(values).toContain("help");
+    expect(values).toContain("hello");
+  });
+
+  test("finds similar words within distance 2", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "wrld",
+      10,
+      { maxDistance: 2 },
+    );
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].value).toBe("world");
+  });
+
+  test("returns empty for queries too short (< 2 chars)", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "h",
+      10,
+      { maxDistance: 2 },
+    );
+    expect(results).toStrictEqual([]);
+  });
+
+  test("respects maxDistance — strict distance 1 misses distance-2 typos", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "wrld",
+      10,
+      { maxDistance: 1 },
+    );
+    // "wrld" -> "world" is distance 1 (insertion), should still match
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  test("skips words with large length difference", () => {
+    const indexedWords = createIndexedWords();
+    // "he" (len 2) vs "hello" (len 5) — diff 3 > maxDistance 2
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "he",
+      10,
+      { maxDistance: 2 },
+    );
+    // Should only match words within length range
+    const matchedHello = results.find((r) => r.value === "hello");
+    expect(matchedHello).toBeUndefined();
+  });
+
+  test("sorts by distance (closest first)", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "helloo",
+      10,
+      { maxDistance: 2 },
+    );
+    // "helloo" -> "hello" (dist 1, extra 'o') should come before "help" (dist 3, too far)
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results[0].value).toBe("hello");
+  });
+
+  test("marks results as fuzzy", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "helo",
+      10,
+      { maxDistance: 2 },
+    );
+    for (const result of results) {
+      expect(result.fuzzy).toBe(true);
+    }
+  });
+
+  test("does not return exact matches", () => {
+    const indexedWords = createIndexedWords();
+    const results = suggestWordsBySpellCorrection(
+      indexedWords,
+      "hello",
+      10,
+      { maxDistance: 2 },
+    );
+    const exactMatch = results.find((r) => r.value === "hello");
+    expect(exactMatch).toBeUndefined();
   });
 });

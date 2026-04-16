@@ -7,10 +7,16 @@ import type { IndexedWords } from "../ui/AutoCompleteSuggest";
 import { max, uniqWith } from "../util/collection-helper";
 import {
   capitalizeFirstLetter,
+  levenshteinDistance,
   lowerFuzzy,
+  lowerFuzzyDiacriticsInsensitive,
   lowerFuzzyStarsWith,
+  lowerFuzzyStartsWithDiacriticsInsensitive,
   lowerIncludes,
+  lowerIncludesDiacriticsInsensitive,
   lowerStartsWith,
+  lowerStartsWithDiacriticsInsensitive,
+  stripDiacritics,
   wrapFuzzy,
 } from "../util/strings";
 
@@ -66,6 +72,7 @@ export function judge(
     fuzzy?: {
       minMatchScore: number;
     };
+    diacriticsInsensitive?: boolean;
   },
 ): Judgement {
   if (query === "") {
@@ -79,7 +86,9 @@ export function judge(
     };
   }
 
-  const matcher = options?.fuzzy ? lowerFuzzy : wrapFuzzy(lowerStartsWith);
+  const matcher = options?.fuzzy
+    ? (options?.diacriticsInsensitive ? lowerFuzzyDiacriticsInsensitive : lowerFuzzy)
+    : wrapFuzzy(options?.diacriticsInsensitive ? lowerStartsWithDiacriticsInsensitive : lowerStartsWith);
 
   const matched = matcher(word.value, query);
   if (
@@ -160,6 +169,7 @@ export function suggestWords(
     fuzzy?: {
       minMatchScore: number;
     };
+    diacriticsInsensitive?: boolean;
     providerMinChars?: {
       currentFile: number;
       currentVault: number;
@@ -327,6 +337,7 @@ export function judgeByPartialMatch(
     fuzzy?: {
       minMatchScore: number;
     };
+    diacriticsInsensitive?: boolean;
   },
 ): Judgement {
   if (query === "") {
@@ -338,11 +349,11 @@ export function judgeByPartialMatch(
   }
 
   const startsWithMatcher = options?.fuzzy
-    ? lowerFuzzyStarsWith
-    : wrapFuzzy(lowerStartsWith);
+    ? (options?.diacriticsInsensitive ? lowerFuzzyStartsWithDiacriticsInsensitive : lowerFuzzyStarsWith)
+    : wrapFuzzy(options?.diacriticsInsensitive ? lowerStartsWithDiacriticsInsensitive : lowerStartsWith);
   const includesMatcher = options?.fuzzy
-    ? lowerFuzzy
-    : wrapFuzzy(lowerIncludes);
+    ? (options?.diacriticsInsensitive ? lowerFuzzyDiacriticsInsensitive : lowerFuzzy)
+    : wrapFuzzy(options?.diacriticsInsensitive ? lowerIncludesDiacriticsInsensitive : lowerIncludes);
 
   const startsWithMatched = startsWithMatcher(word.value, query);
   if (
@@ -465,6 +476,7 @@ export function suggestWordsByPartialMatch(
     fuzzy?: {
       minMatchScore: number;
     };
+    diacriticsInsensitive?: boolean;
     providerMinChars?: {
       currentFile: number;
       currentVault: number;
@@ -584,5 +596,96 @@ export function suggestWordsByPartialMatch(
     .slice(0, maxNum);
 
   // XXX: There is no guarantee that equals with max, but it is important for performance
+  return uniqWith(candidate, suggestionUniqPredicate);
+}
+
+/**
+ * Spell-correction fallback using Levenshtein distance.
+ * Only called when normal matching returns 0 results (lazy).
+ * Performance guards:
+ * - Skips candidates whose length differs by more than maxDistance chars
+ * - Normalizes diacritics if option is enabled (so "café" matches "cafe")
+ */
+export function suggestWordsBySpellCorrection(
+  indexedWords: IndexedWords,
+  query: string,
+  maxNum: number,
+  option: {
+    maxDistance: number;
+    selectionHistoryStorage?: SelectionHistoryStorage;
+    diacriticsInsensitive?: boolean;
+  },
+): Word[] {
+  if (query.length < 2) {
+    return [];
+  }
+
+  const { maxDistance, selectionHistoryStorage, diacriticsInsensitive } =
+    option;
+  const queryLower = diacriticsInsensitive
+    ? stripDiacritics(query.toLowerCase())
+    : query.toLowerCase();
+  const queryLen = queryLower.length;
+
+  // Collect all words from all providers
+  const allWords: Word[] = [
+    ...Object.values(indexedWords.currentFile).flat(),
+    ...Object.values(indexedWords.currentVault).flat(),
+    ...Object.values(indexedWords.customDictionary).flat(),
+    ...Object.values(indexedWords.internalLink).flat(),
+  ];
+
+  const scored: { word: Word; distance: number }[] = [];
+
+  for (const word of allWords) {
+    const valueLower = diacriticsInsensitive
+      ? stripDiacritics(word.value.toLowerCase())
+      : word.value.toLowerCase();
+
+    // Length guard: skip if length difference exceeds maxDistance
+    if (Math.abs(valueLower.length - queryLen) > maxDistance) {
+      continue;
+    }
+
+    // Skip exact matches (those would have been caught by normal matching)
+    if (valueLower === queryLower) {
+      continue;
+    }
+
+    const dist = levenshteinDistance(queryLower, valueLower);
+    if (dist <= maxDistance) {
+      scored.push({ word: { ...word, hit: word.value, fuzzy: true, query }, distance: dist });
+    }
+  }
+
+  // Sort by distance (closest first), then by word length (shorter first)
+  scored.sort((a, b) => {
+    if (a.distance !== b.distance) {
+      return a.distance - b.distance;
+    }
+
+    if (selectionHistoryStorage) {
+      const latestUpdated = max(
+        scored.map(
+          (x) =>
+            selectionHistoryStorage.getSelectionHistory(x.word as HitWord)
+              ?.lastUpdated ?? 0,
+        ),
+        0,
+      );
+      const ret = selectionHistoryStorage.compare(
+        a.word as HitWord,
+        b.word as HitWord,
+        latestUpdated,
+      );
+      if (ret !== 0) {
+        return ret;
+      }
+    }
+
+    return a.word.value.length - b.word.value.length;
+  });
+
+  const candidate = scored.map((x) => x.word).slice(0, maxNum);
   return uniqWith(candidate, suggestionUniqPredicate);
 }

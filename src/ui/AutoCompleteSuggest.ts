@@ -27,7 +27,10 @@ import { InternalLinkWordProvider } from "../provider/InternalLinkWordProvider";
 import { MatchStrategy } from "../provider/MatchStrategy";
 import { SpecificMatchStrategy } from "../provider/SpecificMatchStrategy";
 import type { WordsByFirstLetter } from "../provider/suggester";
-import { suggestionUniqPredicate } from "../provider/suggester";
+import {
+  suggestionUniqPredicate,
+  suggestWordsBySpellCorrection,
+} from "../provider/suggester";
 import type { Settings } from "../setting/settings";
 import {
   type HitWord,
@@ -536,6 +539,8 @@ export class AutoCompleteSuggest
                       minMatchScore: this.settings.minFuzzyMatchScore,
                     }
                   : undefined,
+                diacriticsInsensitive:
+                  this.settings.treatAccentDiacriticsAsAlphabeticCharacters,
                 providerMinChars: {
                   currentFile:
                     this.settings.currentFileMinNumberOfCharactersForTrigger,
@@ -583,6 +588,29 @@ export class AutoCompleteSuggest
             (x) =>
               x.type !== "internalLink" || !linkPaths.includes(x.createdPath),
           );
+        }
+
+        // Spell correction fallback (lazy: only when 0 normal results)
+        if (
+          words.length === 0 &&
+          this.settings.enableSpellCorrection &&
+          !parsedQuery.currentFrontMatter
+        ) {
+          const lastQuery = parsedQuery.queries[parsedQuery.queries.length - 1];
+          if (lastQuery && lastQuery.word.length >= 2) {
+            words = suggestWordsBySpellCorrection(
+              this.indexedWords,
+              lastQuery.word,
+              this.settings.maxNumberOfSuggestions,
+              {
+                maxDistance: this.settings.spellCorrectionMaxDistance,
+                selectionHistoryStorage: this.selectionHistoryStorage,
+                diacriticsInsensitive:
+                  this.settings
+                    .treatAccentDiacriticsAsAlphabeticCharacters,
+              },
+            ).map((word) => ({ ...word, offset: lastQuery.offset }));
+          }
         }
 
         cb(

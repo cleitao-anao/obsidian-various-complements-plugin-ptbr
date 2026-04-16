@@ -7,7 +7,7 @@ import path from "path";
 import process from "process";
 import sveltePreprocess from "svelte-preprocess";
 
-const VAULT_DIR = "/Users/tadashi-aikawa/work/minerva";
+const VAULT_DIR = "/Users/joaov/Documents/teste";
 const FILES = ["main.js", "manifest.json", "styles.css"];
 
 // ---

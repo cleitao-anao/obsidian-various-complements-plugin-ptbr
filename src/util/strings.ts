@@ -95,6 +95,95 @@ export function lowerFuzzyStarsWith(a: string, b: string): FuzzyResult {
     : { type: "none" };
 }
 
+/**
+ * Remove diacritics/accents from a string using Unicode NFD normalization.
+ * More efficient than diacritics-map for runtime comparison.
+ * Example: "café" → "cafe", "São Paulo" → "Sao Paulo"
+ */
+export function stripDiacritics(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+export function lowerStartsWithDiacriticsInsensitive(
+  a: string,
+  b: string,
+): boolean {
+  return stripDiacritics(a.toLowerCase()).startsWith(
+    stripDiacritics(b.toLowerCase()),
+  );
+}
+
+export function lowerIncludesDiacriticsInsensitive(
+  a: string,
+  b: string,
+): boolean {
+  return stripDiacritics(a.toLowerCase()).includes(
+    stripDiacritics(b.toLowerCase()),
+  );
+}
+
+export function lowerFuzzyDiacriticsInsensitive(
+  a: string,
+  b: string,
+): FuzzyResult {
+  return microFuzzy(
+    stripDiacritics(a.toLowerCase()),
+    stripDiacritics(b.toLowerCase()),
+  );
+}
+
+export function lowerFuzzyStartsWithDiacriticsInsensitive(
+  a: string,
+  b: string,
+): FuzzyResult {
+  const aNorm = stripDiacritics(a.toLowerCase());
+  const bNorm = stripDiacritics(b.toLowerCase());
+  return aNorm[0] === bNorm[0]
+    ? microFuzzy(aNorm, bNorm)
+    : { type: "none" };
+}
+
+/**
+ * Compute the Levenshtein (edit) distance between two strings.
+ * Uses a single-row DP approach for O(min(m,n)) memory.
+ * Used as a spell-correction fallback when normal matching yields no results.
+ */
+export function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  // Ensure a is the shorter string for memory optimization
+  if (a.length > b.length) {
+    [a, b] = [b, a];
+  }
+
+  const aLen = a.length;
+  const bLen = b.length;
+  const row = new Array<number>(aLen + 1);
+
+  for (let i = 0; i <= aLen; i++) {
+    row[i] = i;
+  }
+
+  for (let j = 1; j <= bLen; j++) {
+    let prev = j;
+    for (let i = 1; i <= aLen; i++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const val = Math.min(
+        row[i] + 1, // deletion
+        prev + 1, // insertion
+        row[i - 1] + cost, // substitution
+      );
+      row[i - 1] = prev;
+      prev = val;
+    }
+    row[aLen] = prev;
+  }
+
+  return row[aLen];
+}
+
 export function capitalizeFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }

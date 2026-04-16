@@ -15,6 +15,7 @@ type Handler = (
     fuzzy?: {
       minMatchScore: number;
     };
+    diacriticsInsensitive?: boolean;
   },
 ) => Word[];
 

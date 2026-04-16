@@ -21,6 +21,9 @@ export interface Settings {
   matchStrategy: string;
   fuzzyMatch: boolean;
   minFuzzyMatchScore: number;
+  // spell correction
+  enableSpellCorrection: boolean;
+  spellCorrectionMaxDistance: number;
   matchingWithoutEmoji: boolean;
   treatAccentDiacriticsAsAlphabeticCharacters: boolean;
   treatUnderscoreAsPartOfWord: boolean;
@@ -146,6 +149,9 @@ export const DEFAULT_SETTINGS: Settings = {
   matchStrategy: "prefix",
   fuzzyMatch: true,
   minFuzzyMatchScore: 0.5,
+  // spell correction
+  enableSpellCorrection: false,
+  spellCorrectionMaxDistance: 2,
   matchingWithoutEmoji: true,
   treatAccentDiacriticsAsAlphabeticCharacters: false,
   treatUnderscoreAsPartOfWord: false,
@@ -393,6 +399,43 @@ export class VariousComplementsSettingTab extends PluginSettingTab {
         );
       },
     );
+
+    addFilterableSetting(
+      "Spell correction (Levenshtein fallback)",
+      "When enabled, suggests similar words (edit distance ≤ max) as a fallback when no normal match is found. Only activates when 0 results are returned.",
+      (setting) => {
+        setting.addToggle((tc) => {
+          tc.setValue(this.plugin.settings.enableSpellCorrection).onChange(
+            async (value) => {
+              this.plugin.settings.enableSpellCorrection = value;
+              await this.plugin.saveSettings();
+              this.display();
+            },
+          );
+        });
+      },
+    );
+
+    if (this.plugin.settings.enableSpellCorrection) {
+      addFilterableSetting(
+        "Max spell correction distance",
+        "Maximum Levenshtein (edit) distance for spell correction suggestions. Lower = stricter, higher = more lenient.",
+        (setting) => {
+          setting
+            .setClass("various-complements__settings__nested")
+            .addSlider((sc) =>
+              sc
+                .setLimits(1, 3, 1)
+                .setValue(this.plugin.settings.spellCorrectionMaxDistance)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                  this.plugin.settings.spellCorrectionMaxDistance = value;
+                  await this.plugin.saveSettings();
+                }),
+            );
+        },
+      );
+    }
 
     addFilterableSetting(
       "Treat accent diacritics as alphabetic characters.",
