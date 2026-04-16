@@ -1197,6 +1197,10 @@ export class AutoCompleteSuggest
       text += this.settings.displayedTextSuffix;
     }
 
+    if (word.isSpellCorrection) {
+      text += " ✨";
+    }
+
     base.createDiv({
       text,
       cls:

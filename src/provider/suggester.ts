@@ -19,6 +19,7 @@ import {
   stripDiacritics,
   wrapFuzzy,
 } from "../util/strings";
+import { BKTree } from "../util/bk-tree";
 
 export type WordsByFirstLetter = { [firstLetter: string]: Word[] };
 
@@ -599,6 +600,42 @@ export function suggestWordsByPartialMatch(
   return uniqWith(candidate, suggestionUniqPredicate);
 }
 
+class ProviderBKCache {
+  dep: any = null;
+  diacriticsInsensitive?: boolean = undefined;
+  tree: BKTree<Word> | null = null;
+
+  getTree(
+    dep: Record<string, Word[]>,
+    diacriticsInsensitive: boolean | undefined,
+  ): BKTree<Word> {
+    if (
+      this.tree !== null &&
+      this.dep === dep &&
+      this.diacriticsInsensitive === diacriticsInsensitive
+    ) {
+      return this.tree;
+    }
+
+    const words = Object.values(dep).flat();
+    this.tree = BKTree.fromItems(words, (w) =>
+      diacriticsInsensitive
+        ? stripDiacritics(w.value.toLowerCase())
+        : w.value.toLowerCase()
+    );
+    this.dep = dep;
+    this.diacriticsInsensitive = diacriticsInsensitive;
+    return this.tree;
+  }
+}
+
+const _bkTreeCaches = {
+  currentFile: new ProviderBKCache(),
+  currentVault: new ProviderBKCache(),
+  customDictionary: new ProviderBKCache(),
+  internalLink: new ProviderBKCache(),
+};
+
 /**
  * Spell-correction fallback using Levenshtein distance.
  * Only called when normal matching returns 0 results (lazy).
@@ -627,34 +664,31 @@ export function suggestWordsBySpellCorrection(
     : query.toLowerCase();
   const queryLen = queryLower.length;
 
-  // Collect all words from all providers
-  const allWords: Word[] = [
-    ...Object.values(indexedWords.currentFile).flat(),
-    ...Object.values(indexedWords.currentVault).flat(),
-    ...Object.values(indexedWords.customDictionary).flat(),
-    ...Object.values(indexedWords.internalLink).flat(),
+  const trees: BKTree<Word>[] = [
+    _bkTreeCaches.currentFile.getTree(indexedWords.currentFile, diacriticsInsensitive),
+    _bkTreeCaches.currentVault.getTree(indexedWords.currentVault, diacriticsInsensitive),
+    _bkTreeCaches.customDictionary.getTree(indexedWords.customDictionary, diacriticsInsensitive),
+    _bkTreeCaches.internalLink.getTree(indexedWords.internalLink, diacriticsInsensitive),
   ];
 
   const scored: { word: Word; distance: number }[] = [];
 
-  for (const word of allWords) {
-    const valueLower = diacriticsInsensitive
-      ? stripDiacritics(word.value.toLowerCase())
-      : word.value.toLowerCase();
-
-    // Length guard: skip if length difference exceeds maxDistance
-    if (Math.abs(valueLower.length - queryLen) > maxDistance) {
-      continue;
-    }
-
-    // Skip exact matches (those would have been caught by normal matching)
-    if (valueLower === queryLower) {
-      continue;
-    }
-
-    const dist = levenshteinDistance(queryLower, valueLower);
-    if (dist <= maxDistance) {
-      scored.push({ word: { ...word, hit: word.value, fuzzy: true, query }, distance: dist });
+  for (const tree of trees) {
+    const results = tree.search(queryLower, maxDistance);
+    for (const { item: word, distance } of results) {
+      if (Math.abs(word.value.length - queryLen) > maxDistance) {
+        continue;
+      }
+      scored.push({
+        word: {
+          ...word,
+          hit: word.value,
+          fuzzy: true,
+          isSpellCorrection: true,
+          query,
+        },
+        distance,
+      });
     }
   }
 

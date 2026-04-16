@@ -15,6 +15,7 @@ export interface DefaultWord {
   offset?: number;
   hit?: string;
   fuzzy?: boolean;
+  isSpellCorrection?: boolean;
   query?: string;
   valueForHistory?: string; // prioritize this value for history
 }
