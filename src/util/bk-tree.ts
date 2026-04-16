@@ -28,7 +28,10 @@ export class BKTree<T> {
   /**
    * Build a BK-Tree from an iterable of items.
    */
-  static fromItems<T>(items: Iterable<T>, extractor: (item: T) => string): BKTree<T> {
+  static fromItems<T>(
+    items: Iterable<T>,
+    extractor: (item: T) => string,
+  ): BKTree<T> {
     const tree = new BKTree<T>(extractor);
     for (const item of items) {
       tree.add(item);
@@ -77,10 +80,7 @@ export class BKTree<T> {
    * so we only need to check children whose edge label `d` satisfies:
    *   d(query, node) - maxDistance <= d <= d(query, node) + maxDistance
    */
-  search(
-    query: string,
-    maxDistance: number,
-  ): { item: T; distance: number }[] {
+  search(query: string, maxDistance: number): { item: T; distance: number }[] {
     if (this.root === null) {
       return [];
     }

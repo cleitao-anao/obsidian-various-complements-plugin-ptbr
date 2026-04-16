@@ -14,9 +14,9 @@ import {
   isEOTinCodeBlock as isEOTinCodeBlock_,
   isInternalLink,
   joinNumberWithSymbol,
+  levenshteinDistance,
   lowerFuzzyDiacriticsInsensitive,
   lowerFuzzyStartsWithDiacriticsInsensitive,
-  levenshteinDistance,
   lowerIncludes,
   lowerIncludesDiacriticsInsensitive,
   lowerIncludesWithoutSpace,
@@ -282,19 +282,19 @@ describe.each<{ value: string; query: string; expected: FuzzyResult }>`
 });
 
 describe.each<{ a: string; b: string; expected: number }>`
-  a            | b            | expected
-  ${"kitten"}  | ${"sitting"} | ${3}
-  ${"cafe"}    | ${"café"}    | ${1}
-  ${""}        | ${"abc"}     | ${3}
-  ${"abc"}     | ${""}        | ${3}
-  ${"abc"}     | ${"abc"}     | ${0}
-  ${"abc"}     | ${"ab"}      | ${1}
-  ${"ab"}      | ${"abc"}     | ${1}
-  ${"abc"}     | ${"axc"}     | ${1}
-  ${"abc"}     | ${"xyz"}     | ${3}
-  ${"book"}    | ${"back"}    | ${2}
-  ${"hello"}   | ${"helo"}    | ${1}
-  ${"helo"}    | ${"hello"}   | ${1}
+  a           | b            | expected
+  ${"kitten"} | ${"sitting"} | ${3}
+  ${"cafe"}   | ${"café"}    | ${1}
+  ${""}       | ${"abc"}     | ${3}
+  ${"abc"}    | ${""}        | ${3}
+  ${"abc"}    | ${"abc"}     | ${0}
+  ${"abc"}    | ${"ab"}      | ${1}
+  ${"ab"}     | ${"abc"}     | ${1}
+  ${"abc"}    | ${"axc"}     | ${1}
+  ${"abc"}    | ${"xyz"}     | ${3}
+  ${"book"}   | ${"back"}    | ${2}
+  ${"hello"}  | ${"helo"}    | ${1}
+  ${"helo"}   | ${"hello"}   | ${1}
 `("levenshteinDistance", ({ a, b, expected }) => {
   test(`levenshteinDistance(${a}, ${b}) = ${expected}`, () => {
     expect(levenshteinDistance(a, b)).toBe(expected);
@@ -302,16 +302,16 @@ describe.each<{ a: string; b: string; expected: number }>`
 });
 
 describe.each<{ text: string; expected: string }>`
-  text                | expected
-  ${"café"}           | ${"cafe"}
-  ${"São Paulo"}      | ${"Sao Paulo"}
-  ${"hello"}          | ${"hello"}
-  ${"naïve"}          | ${"naive"}
-  ${"résumé"}         | ${"resume"}
-  ${"über"}           | ${"uber"}
-  ${"El Niño"}        | ${"El Nino"}
-  ${"crème brûlée"}   | ${"creme brulee"}
-  ${""}               | ${""}
+  text              | expected
+  ${"café"}         | ${"cafe"}
+  ${"São Paulo"}    | ${"Sao Paulo"}
+  ${"hello"}        | ${"hello"}
+  ${"naïve"}        | ${"naive"}
+  ${"résumé"}       | ${"resume"}
+  ${"über"}         | ${"uber"}
+  ${"El Niño"}      | ${"El Nino"}
+  ${"crème brûlée"} | ${"creme brulee"}
+  ${""}             | ${""}
 `("stripDiacritics", ({ text, expected }) => {
   test(`stripDiacritics(${text}) = ${expected}`, () => {
     expect(stripDiacritics(text)).toBe(expected);
@@ -319,16 +319,16 @@ describe.each<{ text: string; expected: string }>`
 });
 
 describe.each<{ a: string; b: string; expected: boolean }>`
-  a             | b            | expected
-  ${"café"}     | ${"caf"}     | ${true}
-  ${"cafe"}     | ${"caf"}     | ${true}
-  ${"café"}     | ${"café"}    | ${true}
-  ${"Café"}     | ${"caf"}     | ${true}
-  ${"cafe"}     | ${"café"}    | ${true}
-  ${"São"}      | ${"sao"}     | ${true}
-  ${"sao"}      | ${"São"}     | ${true}
-  ${"café"}     | ${"xyz"}     | ${false}
-  ${"abc"}      | ${"abcd"}    | ${false}
+  a         | b         | expected
+  ${"café"} | ${"caf"}  | ${true}
+  ${"cafe"} | ${"caf"}  | ${true}
+  ${"café"} | ${"café"} | ${true}
+  ${"Café"} | ${"caf"}  | ${true}
+  ${"cafe"} | ${"café"} | ${true}
+  ${"São"}  | ${"sao"}  | ${true}
+  ${"sao"}  | ${"São"}  | ${true}
+  ${"café"} | ${"xyz"}  | ${false}
+  ${"abc"}  | ${"abcd"} | ${false}
 `("lowerStartsWithDiacriticsInsensitive", ({ a, b, expected }) => {
   test(`lowerStartsWithDiacriticsInsensitive(${a}, ${b}) = ${expected}`, () => {
     expect(lowerStartsWithDiacriticsInsensitive(a, b)).toBe(expected);
@@ -336,11 +336,11 @@ describe.each<{ a: string; b: string; expected: boolean }>`
 });
 
 describe.each<{ a: string; b: string; expected: boolean }>`
-  a                | b          | expected
-  ${"un café"}     | ${"cafe"}  | ${true}
-  ${"un cafe"}     | ${"café"}  | ${true}
-  ${"São Paulo"}   | ${"paul"}  | ${true}
-  ${"hello world"} | ${"xyz"}   | ${false}
+  a                | b         | expected
+  ${"un café"}     | ${"cafe"} | ${true}
+  ${"un cafe"}     | ${"café"} | ${true}
+  ${"São Paulo"}   | ${"paul"} | ${true}
+  ${"hello world"} | ${"xyz"}  | ${false}
 `("lowerIncludesDiacriticsInsensitive", ({ a, b, expected }) => {
   test(`lowerIncludesDiacriticsInsensitive(${a}, ${b}) = ${expected}`, () => {
     expect(lowerIncludesDiacriticsInsensitive(a, b)).toBe(expected);

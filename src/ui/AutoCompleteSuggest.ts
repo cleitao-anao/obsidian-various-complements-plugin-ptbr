@@ -606,8 +606,7 @@ export class AutoCompleteSuggest
                 maxDistance: this.settings.spellCorrectionMaxDistance,
                 selectionHistoryStorage: this.selectionHistoryStorage,
                 diacriticsInsensitive:
-                  this.settings
-                    .treatAccentDiacriticsAsAlphabeticCharacters,
+                  this.settings.treatAccentDiacriticsAsAlphabeticCharacters,
               },
             ).map((word) => ({ ...word, offset: lastQuery.offset }));
           }

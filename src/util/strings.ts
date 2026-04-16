@@ -138,9 +138,7 @@ export function lowerFuzzyStartsWithDiacriticsInsensitive(
 ): FuzzyResult {
   const aNorm = stripDiacritics(a.toLowerCase());
   const bNorm = stripDiacritics(b.toLowerCase());
-  return aNorm[0] === bNorm[0]
-    ? microFuzzy(aNorm, bNorm)
-    : { type: "none" };
+  return aNorm[0] === bNorm[0] ? microFuzzy(aNorm, bNorm) : { type: "none" };
 }
 
 /**

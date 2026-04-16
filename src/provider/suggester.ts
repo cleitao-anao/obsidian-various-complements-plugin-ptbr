@@ -4,10 +4,10 @@ import type {
   SelectionHistoryStorage,
 } from "../storage/SelectionHistoryStorage";
 import type { IndexedWords } from "../ui/AutoCompleteSuggest";
+import { BKTree } from "../util/bk-tree";
 import { max, uniqWith } from "../util/collection-helper";
 import {
   capitalizeFirstLetter,
-  levenshteinDistance,
   lowerFuzzy,
   lowerFuzzyDiacriticsInsensitive,
   lowerFuzzyStarsWith,
@@ -19,7 +19,6 @@ import {
   stripDiacritics,
   wrapFuzzy,
 } from "../util/strings";
-import { BKTree } from "../util/bk-tree";
 
 export type WordsByFirstLetter = { [firstLetter: string]: Word[] };
 
@@ -88,8 +87,14 @@ export function judge(
   }
 
   const matcher = options?.fuzzy
-    ? (options?.diacriticsInsensitive ? lowerFuzzyDiacriticsInsensitive : lowerFuzzy)
-    : wrapFuzzy(options?.diacriticsInsensitive ? lowerStartsWithDiacriticsInsensitive : lowerStartsWith);
+    ? options?.diacriticsInsensitive
+      ? lowerFuzzyDiacriticsInsensitive
+      : lowerFuzzy
+    : wrapFuzzy(
+        options?.diacriticsInsensitive
+          ? lowerStartsWithDiacriticsInsensitive
+          : lowerStartsWith,
+      );
 
   const matched = matcher(word.value, query);
   if (
@@ -350,11 +355,23 @@ export function judgeByPartialMatch(
   }
 
   const startsWithMatcher = options?.fuzzy
-    ? (options?.diacriticsInsensitive ? lowerFuzzyStartsWithDiacriticsInsensitive : lowerFuzzyStarsWith)
-    : wrapFuzzy(options?.diacriticsInsensitive ? lowerStartsWithDiacriticsInsensitive : lowerStartsWith);
+    ? options?.diacriticsInsensitive
+      ? lowerFuzzyStartsWithDiacriticsInsensitive
+      : lowerFuzzyStarsWith
+    : wrapFuzzy(
+        options?.diacriticsInsensitive
+          ? lowerStartsWithDiacriticsInsensitive
+          : lowerStartsWith,
+      );
   const includesMatcher = options?.fuzzy
-    ? (options?.diacriticsInsensitive ? lowerFuzzyDiacriticsInsensitive : lowerFuzzy)
-    : wrapFuzzy(options?.diacriticsInsensitive ? lowerIncludesDiacriticsInsensitive : lowerIncludes);
+    ? options?.diacriticsInsensitive
+      ? lowerFuzzyDiacriticsInsensitive
+      : lowerFuzzy
+    : wrapFuzzy(
+        options?.diacriticsInsensitive
+          ? lowerIncludesDiacriticsInsensitive
+          : lowerIncludes,
+      );
 
   const startsWithMatched = startsWithMatcher(word.value, query);
   if (
@@ -621,7 +638,7 @@ class ProviderBKCache {
     this.tree = BKTree.fromItems(words, (w) =>
       diacriticsInsensitive
         ? stripDiacritics(w.value.toLowerCase())
-        : w.value.toLowerCase()
+        : w.value.toLowerCase(),
     );
     this.dep = dep;
     this.diacriticsInsensitive = diacriticsInsensitive;
@@ -665,10 +682,22 @@ export function suggestWordsBySpellCorrection(
   const queryLen = queryLower.length;
 
   const trees: BKTree<Word>[] = [
-    _bkTreeCaches.currentFile.getTree(indexedWords.currentFile, diacriticsInsensitive),
-    _bkTreeCaches.currentVault.getTree(indexedWords.currentVault, diacriticsInsensitive),
-    _bkTreeCaches.customDictionary.getTree(indexedWords.customDictionary, diacriticsInsensitive),
-    _bkTreeCaches.internalLink.getTree(indexedWords.internalLink, diacriticsInsensitive),
+    _bkTreeCaches.currentFile.getTree(
+      indexedWords.currentFile,
+      diacriticsInsensitive,
+    ),
+    _bkTreeCaches.currentVault.getTree(
+      indexedWords.currentVault,
+      diacriticsInsensitive,
+    ),
+    _bkTreeCaches.customDictionary.getTree(
+      indexedWords.customDictionary,
+      diacriticsInsensitive,
+    ),
+    _bkTreeCaches.internalLink.getTree(
+      indexedWords.internalLink,
+      diacriticsInsensitive,
+    ),
   ];
 
   const scored: { word: Word; distance: number }[] = [];
